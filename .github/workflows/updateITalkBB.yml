@@ -25,6 +25,7 @@ jobs:
         fetch-depth: 0 
 
     - name: Send GET Request with Authorization Header # 步骤2: 发送 API 请求并保存响应
+      id: get_api_response # 添加 id 以便后续步骤引用其输出
       run: |
         API_URL="https://api.italkbbtv.com/playauth/v1/live?series_id=62cbb01d4725b530583c1759&hl=zh_CN"
         # 从 GitHub Secrets 中获取 Authorization 令牌。
@@ -38,6 +39,29 @@ jobs:
              -H "Authorization: Bearer $AUTH_TOKEN" \
              "$API_URL" \
              -o response.json
+        
+        # 将整个 JSON 响应也存储为步骤输出，方便调试或后续解析
+        RESPONSE_CONTENT=$(cat response.json)
+        echo "full_response=$RESPONSE_CONTENT" >> "$GITHUB_OUTPUT"
+
+    - name: Extract Manifest and Write to tv.txt # **新增步骤**：提取 manifest 并写入文件
+      run: |
+        # 从上一步的输出中获取 JSON 响应
+        JSON_RESPONSE='${{ steps.get_api_response.outputs.full_response }}'
+        
+        # 使用 jq 提取 manifest 字段的值
+        MANIFEST_URL=$(echo "$JSON_RESPONSE" | jq -r '.manifest')
+        
+        # 定义要写入文件的字符串
+        # 注意：这里固定了“大湾区”，如果你想让它可配置，可以考虑用 GitHub Variables。
+        LINE_TO_WRITE="大湾区,$MANIFEST_URL"
+        
+        # 将内容写入 tv.txt 文件
+        # 注意：使用 > 会覆盖文件内容，使用 >> 会追加内容。根据你的需求选择。
+        echo "$LINE_TO_WRITE" > tv.txt 
+        
+        echo "Generated tv.txt content:"
+        cat tv.txt
 
     - name: Configure Git # 步骤3: 配置 Git 用户信息，以便提交
       run: |
@@ -45,28 +69,28 @@ jobs:
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
 
-    - name: Commit and Push Response # 步骤4: 提交并推送 response.json 到仓库
+    - name: Commit and Push Files # 步骤4: 提交并推送 response.json 和 tv.txt 到仓库
       run: |
-        # **重要：强制确保本地分支与远程完全同步**
-        # 先拉取最新，然后强制重置，确保本地工作区是最新的远程状态。
-        git fetch origin main
-        git reset --hard origin/main
-        
-        # 将 response.json 文件添加到 Git 暂存区
-        git add response.json
+        # 将 response.json 和 tv.txt 文件都添加到 Git 暂存区
+        git add response.json tv.txt
         
         # 检查是否有实际的文件更改。
         # 如果文件内容与上次提交相同，则不执行 commit，避免创建不必要的空提交。
+        # `git diff-index --quiet HEAD` 会检查当前工作区与 HEAD 提交的差异。
         if git diff-index --quiet HEAD; then
-          echo "No changes to response.json, skipping commit."
+          echo "No changes in response.json or tv.txt, skipping commit."
         else
-          git commit -m "Update API response.json"
-          # **关键的修改：使用 --force 进行推送**
+          git commit -m "Update API response and tv.txt"
+          # **使用 --force 进行推送**
           # 这是最强的推送方式，会覆盖远程分支。
           # 如果你的主分支不是 'main'，请将 'main' 替换为你的实际主分支名称。
           git push origin main --force 
         fi
 
-    - name: Display Response (Optional) # 步骤5: (可选) 在日志中显示 response.json 的内容
+    - name: Display Generated Files (Optional) # 步骤5: (可选) 在日志中显示生成的文件内容
       run: |
+        echo "Content of response.json:"
         cat response.json
+        echo ""
+        echo "Content of tv.txt:"
+        cat tv.txt
