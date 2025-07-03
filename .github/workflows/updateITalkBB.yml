@@ -2,7 +2,10 @@ name: Send iTalkBB API Request and Save Response
 
 on:
   schedule:
-    - cron: '0 0 * * *' # 每天 UTC 00:00 运行
+    # 每天 UTC 时间 00:00 运行
+    # 请注意：cron 表达式基于 UTC 时间。例如，如果你希望在北京时间上午8点运行 (GMT+8)，
+    # 那么需要设置为 UTC 00:00。
+    - cron: '0 0 * * *'
   workflow_dispatch: # 允许手动触发
 
 jobs:
@@ -22,17 +25,17 @@ jobs:
              "$API_URL" \
              -o response.json # 将响应保存到文件
 
-    - name: Configure Git
+    - name: Configure Git # <<< 确保有这个步骤
       run: |
-        git config user.name "github-actions[bot]" # 使用 GitHub Actions 官方 bot 用户名
-        git config user.email "github-actions[bot]@users.noreply.github.com" # 使用 GitHub Actions 官方 bot 邮箱
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
 
-    - name: Commit and Push Response
+    - name: Commit and Push Response # <<< 确保有这个步骤
       run: |
-        git add response.json # 添加 response.json 到 Git 暂存区
+        git add response.json
         # 检查是否有实际的更改，避免空提交
         git diff-index --quiet HEAD || git commit -m "Update API response.json"
-        git push # 推送更改到远程仓库
+        git push
 
     - name: Display Response (Optional)
       run: |
