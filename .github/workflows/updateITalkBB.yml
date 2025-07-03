@@ -1,3 +1,4 @@
+---
 name: Update API Response and Save
 
 on:
@@ -21,6 +22,11 @@ jobs:
     steps:
     - name: Checkout repository # 步骤1: 克隆你的仓库代码
       uses: actions/checkout@v4 # 使用 actions/checkout@v4 来确保有最新功能和安全性
+      with:
+        # **重要：确保在 checkout 时拉取所有历史**
+        # fetch-depth: 0 表示拉取完整历史，而不是默认的浅克隆，
+        # 有时能解决 rebase/push 冲突问题。
+        fetch-depth: 0 
 
     - name: Send GET Request with Authorization Header # 步骤2: 发送 API 请求并保存响应
       run: |
@@ -45,16 +51,21 @@ jobs:
 
     - name: Commit and Push Response # 步骤4: 提交并推送 response.json 到仓库
       run: |
+        # **关键更改：在执行任何操作前，确保本地分支与远程完全同步**
+        # 这会强制本地的 'main' 分支与远程 'origin/main' 同步，丢弃本地的任何差异。
+        # 适用于自动化任务，因为它假定本地工作区只用于这次自动化，无需保留其他本地更改。
+        git fetch origin main
+        git reset --hard origin/main
+        
         # 将 response.json 文件添加到 Git 暂存区
         git add response.json
         
         # 检查是否有实际的文件更改。如果文件内容与上次提交相同，则不执行 commit，避免创建不必要的空提交。
-        # 'if git diff-index --quiet HEAD' 会检查工作区是否有未暂存或未提交的更改。
         if git diff-index --quiet HEAD; then
           echo "No changes to response.json, skipping commit."
         else
           git commit -m "Update API response.json"
-          # **关键的修改：使用 --force-with-lease 进行推送**
+          # **使用 --force-with-lease 进行推送**
           # 这会强制推送，但只有在远程分支是你本地已知版本时才成功，更安全。
           # 如果你的主分支不是 'main'，请将 'main' 替换为你的实际主分支名称。
           git push origin main --force-with-lease 
