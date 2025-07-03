@@ -3,7 +3,8 @@ name: Update API Response and Save
 on:
   schedule:
     # 每天 UTC 时间 00:00 运行
-    # 如果你想在北京时间上午8点运行 (GMT+8)，它对应 UTC 00:00。
+    # 请注意：cron 表达式基于 UTC 时间。例如，如果你希望在北京时间上午8点运行 (GMT+8)，
+    # 那么需要设置为 UTC 00:00。
     - cron: '0 0 * * *'
   workflow_dispatch: # 允许你在 GitHub Actions 界面手动触发此工作流
 
@@ -11,8 +12,10 @@ jobs:
   send_request_and_save:
     runs-on: ubuntu-latest # 在最新的 Ubuntu 运行器上执行此作业
 
-    permissions: # <<< **关键部分：显式授予权限**
-      contents: write # 授予对仓库内容的写入权限，以允许推送文件
+    # **关键部分：显式授予权限**
+    # 这一行确保 GitHub Actions bot 有权限将文件推送到你的仓库。
+    permissions:
+      contents: write # 授予对仓库内容的写入权限，以允许提交和推送文件
 
     steps:
     - name: Checkout repository # 步骤1: 克隆你的仓库代码
@@ -21,7 +24,8 @@ jobs:
     - name: Send GET Request with Authorization Header # 步骤2: 发送 API 请求并保存响应
       run: |
         API_URL="https://api.italkbbtv.com/playauth/v1/live?series_id=62cbb01d4725b530583c1759&hl=zh_CN"
-        # 从 GitHub Secrets 中获取 Authorization 令牌，确保你在仓库设置中已添加 ITALKBB_AUTH_TOKEN
+        # 从 GitHub Secrets 中获取 Authorization 令牌。
+        # 请务必在你的仓库设置 -> Actions -> Secrets and variables -> Secrets 中添加名为 'ITALKBB_AUTH_TOKEN' 的 Secret。
         AUTH_TOKEN="${{ secrets.ITALKBB_AUTH_TOKEN }}"
 
         # 使用 curl 发送 GET 请求，将响应保存到 response.json
@@ -34,17 +38,22 @@ jobs:
 
     - name: Configure Git # 步骤3: 配置 Git 用户信息，以便提交
       run: |
-        # 设置 Git 提交的作者信息为 GitHub Actions bot
+        # 设置 Git 提交的作者信息为 GitHub Actions 官方 bot
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
 
     - name: Commit and Push Response # 步骤4: 提交并推送 response.json 到仓库
       run: |
+        # **重要修复：在提交之前，先拉取远程最新代码**
+        # 这可以解决 'Updates were rejected because the remote contains work that you do not have locally' 错误。
+        # 假设你的主分支是 'main'。如果不是，请将 'main' 替换为你的实际主分支名称。
+        git pull origin main --rebase
+        
         # 将 response.json 文件添加到 Git 暂存区
         git add response.json
         
-        # 检查是否有实际的文件更改。如果文件内容与上次提交相同，则不执行 commit，避免创建空提交。
-        # '||' 表示如果前一个命令失败（即有差异），则执行后一个命令。
+        # 检查是否有实际的文件更改。如果文件内容与上次提交相同，则不执行 commit，避免创建不必要的空提交。
+        # '||' 表示如果前一个命令（git diff-index）返回非零状态码（即有差异），则执行后一个命令（git commit）。
         git diff-index --quiet HEAD || git commit -m "Update API response.json"
         
         # 将本地的更改推送到远程仓库的当前分支
