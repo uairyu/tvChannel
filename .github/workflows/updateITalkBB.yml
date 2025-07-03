@@ -1,31 +1,39 @@
-name: Send iTalkBB API Request
+name: Send iTalkBB API Request and Save Response
 
 on:
   schedule:
-    # 每天 UTC 时间 00:00 运行
-    - cron: '0 0 * * *'
+    - cron: '0 0 * * *' # 每天 UTC 00:00 运行
   workflow_dispatch: # 允许手动触发
 
 jobs:
-  send_request:
+  send_request_and_save:
     runs-on: ubuntu-latest
     steps:
-    - name: Check out repository
-      uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4 # 确保使用最新版本的 actions/checkout
 
     - name: Send GET Request with Authorization Header
       run: |
-        # 使用 curl 发送 GET 请求
-        # 注意：Bearer token 应该作为 GitHub Secrets 存储，而不是直接写在这里
         API_URL="https://api.italkbbtv.com/playauth/v1/live?series_id=62cbb01d4725b530583c1759&hl=zh_CN"
-        AUTH_TOKEN="${{ secrets.ITALKBB_AUTH_TOKEN }}" # 从 GitHub Secrets 获取 token
+        AUTH_TOKEN="${{ secrets.ITALKBB_AUTH_TOKEN }}"
 
         curl -X GET \
              -H "Authorization: Bearer $AUTH_TOKEN" \
              "$API_URL" \
              -o response.json # 将响应保存到文件
 
+    - name: Configure Git
+      run: |
+        git config user.name "github-actions[bot]" # 使用 GitHub Actions 官方 bot 用户名
+        git config user.email "github-actions[bot]@users.noreply.github.com" # 使用 GitHub Actions 官方 bot 邮箱
+
+    - name: Commit and Push Response
+      run: |
+        git add response.json # 添加 response.json 到 Git 暂存区
+        # 检查是否有实际的更改，避免空提交
+        git diff-index --quiet HEAD || git commit -m "Update API response.json"
+        git push # 推送更改到远程仓库
+
     - name: Display Response (Optional)
       run: |
         cat response.json
-        # 你可以在这里添加更多逻辑来处理响应，例如解析 JSON，检查状态等
