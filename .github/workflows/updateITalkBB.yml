@@ -14,6 +14,7 @@ jobs:
 
     # **关键部分：显式授予权限**
     # 这一行确保 GitHub Actions bot 有权限将文件推送到你的仓库。
+    # 请确保你的仓库设置 -> Actions -> General -> Workflow permissions 选项也设置为 'Read and write permissions'。
     permissions:
       contents: write # 授予对仓库内容的写入权限，以允许提交和推送文件
 
@@ -44,20 +45,20 @@ jobs:
 
     - name: Commit and Push Response # 步骤4: 提交并推送 response.json 到仓库
       run: |
-        # **重要修复：在提交之前，先拉取远程最新代码**
-        # 这可以解决 'Updates were rejected because the remote contains work that you do not have locally' 错误。
-        # 假设你的主分支是 'main'。如果不是，请将 'main' 替换为你的实际主分支名称。
-        git pull origin main --rebase
-        
         # 将 response.json 文件添加到 Git 暂存区
         git add response.json
         
         # 检查是否有实际的文件更改。如果文件内容与上次提交相同，则不执行 commit，避免创建不必要的空提交。
-        # '||' 表示如果前一个命令（git diff-index）返回非零状态码（即有差异），则执行后一个命令（git commit）。
-        git diff-index --quiet HEAD || git commit -m "Update API response.json"
-        
-        # 将本地的更改推送到远程仓库的当前分支
-        git push
+        # 'if git diff-index --quiet HEAD' 会检查工作区是否有未暂存或未提交的更改。
+        if git diff-index --quiet HEAD; then
+          echo "No changes to response.json, skipping commit."
+        else
+          git commit -m "Update API response.json"
+          # **关键的修改：使用 --force-with-lease 进行推送**
+          # 这会强制推送，但只有在远程分支是你本地已知版本时才成功，更安全。
+          # 如果你的主分支不是 'main'，请将 'main' 替换为你的实际主分支名称。
+          git push origin main --force-with-lease 
+        fi
 
     - name: Display Response (Optional) # 步骤5: (可选) 在日志中显示 response.json 的内容
       run: |
