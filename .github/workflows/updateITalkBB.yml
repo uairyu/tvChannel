@@ -55,7 +55,7 @@ jobs:
         
         # 将内容写入 tv.txt 文件
         # 使用 > 会覆盖文件内容，确保每次都写入最新的 manifest URL
-        echo "$LINE_TO_WRITE\n$LINE_TO_WRITE" > tv.txt 
+        echo -e "$LINE_TO_WRITE\n$LINE_TO_WRITE" > tv.txt 
         
         echo "Generated tv.txt content:"
         cat tv.txt
