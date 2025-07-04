@@ -2,10 +2,10 @@ name: Update API Response and Save
 
 on:
   schedule:
-    # 每天 UTC 时间 00:00 运行
-    # 请注意：cron 表达式基于 UTC 时间。例如，如果你希望在北京时间上午8点运行 (GMT+8)，
-    # 那么需要设置为 UTC 00:00。
-    - cron: '0 0 * * *'
+    # **关键更改：每1小时运行一次 (UTC 整点)**
+    # 0 * * * * 表示每小时的第0分钟（即整点）运行。
+    # 例如：UTC 00:00, 01:00, 02:00 ...
+    - cron: '0 * * * *'
   workflow_dispatch: # 允许你在 GitHub Actions 界面手动触发此工作流
 
 jobs:
@@ -25,7 +25,6 @@ jobs:
         fetch-depth: 0 
 
     - name: Send GET Request with Authorization Header # 步骤2: 发送 API 请求并保存响应
-      id: get_api_response # 添加 id 以便后续步骤引用其输出
       run: |
         API_URL="https://api.italkbbtv.com/playauth/v1/live?series_id=62cbb01d4725b530583c1759&hl=zh_CN"
         # 从 GitHub Secrets 中获取 Authorization 令牌。
@@ -39,25 +38,23 @@ jobs:
              -H "Authorization: Bearer $AUTH_TOKEN" \
              "$API_URL" \
              -o response.json
-        
-        # 将整个 JSON 响应也存储为步骤输出，方便调试或后续解析
-        RESPONSE_CONTENT=$(cat response.json)
-        echo "full_response=$RESPONSE_CONTENT" >> "$GITHUB_OUTPUT"
 
-    - name: Extract Manifest and Write to tv.txt # **新增步骤**：提取 manifest 并写入文件
+    - name: Extract Manifest and Write to tv.txt # 新增步骤：提取 manifest 并写入文件
       run: |
         # 从上一步的输出中获取 JSON 响应
-        JSON_RESPONSE='${{ steps.get_api_response.outputs.full_response }}'
+        # 你的日志显示 curl 已经成功将响应写入 response.json，所以这里直接从文件读取更直接。
+        # 如果你想使用 steps.get_api_response.outputs.full_response，请确保上一步有对应的输出定义。
+        JSON_RESPONSE=$(cat response.json)
         
         # 使用 jq 提取 manifest 字段的值
         MANIFEST_URL=$(echo "$JSON_RESPONSE" | jq -r '.manifest')
         
         # 定义要写入文件的字符串
-        # 注意：这里固定了“大湾区”，如果你想让它可配置，可以考虑用 GitHub Variables。
+        # 注意：这里固定了“大湾区”。
         LINE_TO_WRITE="大湾区,$MANIFEST_URL"
         
         # 将内容写入 tv.txt 文件
-        # 注意：使用 > 会覆盖文件内容，使用 >> 会追加内容。根据你的需求选择。
+        # 使用 > 会覆盖文件内容，确保每次都写入最新的 manifest URL
         echo "$LINE_TO_WRITE" > tv.txt 
         
         echo "Generated tv.txt content:"
@@ -74,9 +71,7 @@ jobs:
         # 将 response.json 和 tv.txt 文件都添加到 Git 暂存区
         git add response.json tv.txt
         
-        # 检查是否有实际的文件更改。
-        # 如果文件内容与上次提交相同，则不执行 commit，避免创建不必要的空提交。
-        # `git diff-index --quiet HEAD` 会检查当前工作区与 HEAD 提交的差异。
+        # 检查是否有实际的文件更改。如果文件内容与上次提交相同，则不执行 commit，避免创建不必要的空提交。
         if git diff-index --quiet HEAD; then
           echo "No changes in response.json or tv.txt, skipping commit."
         else
