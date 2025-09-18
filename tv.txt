@@ -1,2 +1,2 @@
-大湾区,https://live-s.italkdd.com/cds160/hls/newlive404/newlive404.m3u8?hdnts=st=1758187242~exp=1758190842~hmac=71874aeb928acd330a39025af4ba641f4653b70a0c97fad2f0bd04c2c07fce1a
-大湾区,https://live-s.italkdd.com/cds160/hls/newlive404/newlive404.m3u8?hdnts=st=1758187242~exp=1758190842~hmac=71874aeb928acd330a39025af4ba641f4653b70a0c97fad2f0bd04c2c07fce1a
+大湾区,https://live-s.italkdd.com/cds160/hls/newlive404/newlive404.m3u8?hdnts=st=1758190827~exp=1758194427~hmac=bbba764c2a744d2f49d2528560046bfdeb5931407d8c07240f00973b5d8d31f9
+大湾区,https://live-s.italkdd.com/cds160/hls/newlive404/newlive404.m3u8?hdnts=st=1758190827~exp=1758194427~hmac=bbba764c2a744d2f49d2528560046bfdeb5931407d8c07240f00973b5d8d31f9
